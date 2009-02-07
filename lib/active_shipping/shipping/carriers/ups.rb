@@ -360,6 +360,11 @@ module ActiveMerchant
       end
       
       def parse_address_validation_response(response, options={})
+         xml_hash = Hash.from_xml(response)['AddressValidationResponse']
+         success = response_hash_success?(xml_hash)
+         message = response_hash_message(xml_hash)
+         if success
+         end
       end
       
       def first_or_only(xml_hash)
