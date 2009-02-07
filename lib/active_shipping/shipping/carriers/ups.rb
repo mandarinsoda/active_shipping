@@ -93,6 +93,14 @@ module ActiveMerchant
         parse_tracking_response(response, options)
       end
       
+      def valid_credentials?(location, options={})
+        options = @options.update(options)
+        access_request = build_access_request
+        avs_request = build_address_validation_request(location, options)
+        response = commit(:avs, save_request(access_request + avs_request), (options[:test] || false))
+        parse_address_validation_response(response, options)
+      end
+      
       protected
       def build_access_request
         xml_request = XmlNode.new('AccessRequest') do |access_request|
@@ -194,6 +202,24 @@ module ActiveMerchant
           root_node << XmlNode.new('TrackingNumber', tracking_number.to_s)
         end
         xml_request.to_xml
+      end
+      
+      def build_address_validation_request(location, options={})
+         xml_request = XmlNode.new('AddressValidationRequest') do |root_node|
+            root_node << XmlNode.new('Request') do |request|
+              request << XmlNode.new('TransactionReference') do |reference|
+                reference << XmlNode.new('CustomerContext', 'Track')
+                reference << XmlNode.new('XpciVersion', '1.0001')
+              end
+              request << XmlNode.new('RequestAction', 'AV')
+            end
+            root_node << XmlNode.new('Address') do |address|
+              address << XmlNode.new('City', location.city)
+              address << XmlNode.new('StateProvinceCode', location.province)
+              address << XmlNode.new('PostalCode', location.postal_code)
+            end
+          end
+          xml_request.to_xml
       end
       
       def build_location_node(name,location,options={})
@@ -331,6 +357,9 @@ module ActiveMerchant
           :origin => origin,
           :destination => destination,
           :tracking_number => tracking_number)
+      end
+      
+      def parse_address_validation_response(response, options={})
       end
       
       def first_or_only(xml_hash)

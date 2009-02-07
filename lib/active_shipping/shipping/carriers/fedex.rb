@@ -246,6 +246,7 @@ module ActiveMerchant
       end
       
       def response_hash_success?(xml_hash)
+        puts xml_hash
         ! xml_hash['Error'] && ! xml_hash['SoftError']
       end
       

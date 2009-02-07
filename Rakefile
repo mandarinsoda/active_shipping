@@ -17,7 +17,7 @@ PKG_FILES = FileList[
 
 desc "Default Task"
 task :default => 'test:units'
-task :test => ['test:units','test:remote']
+task :test => ['test:remote']
 
 # Run the unit tests
 
@@ -29,7 +29,7 @@ namespace :test do
   end
 
   Rake::TestTask.new(:remote) do |t|
-    t.pattern = 'test/remote/*_test.rb'
+    t.pattern = 'test/remote/usps_test.rb'
     t.ruby_opts << '-rubygems'
     t.verbose = true
   end
