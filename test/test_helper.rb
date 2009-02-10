@@ -169,7 +169,14 @@ module ActiveMerchant
                                       :state => 'NY',
                                       :address1 => '780 3rd Avenue',
                                       :address2 => 'Suite  2601',
-                                      :zip => '10017')
+                                      :zip => '10017'),
+        :usps_required_maryland => Location.new(
+                                   :country => 'US',
+                                   :city => 'Greenbelt',
+                                   :state => 'MD',
+                                   :address1 => '6406 Ivy Lane',
+                                   :address2 => '',
+                                   :zip => '')
                                       
       }
       

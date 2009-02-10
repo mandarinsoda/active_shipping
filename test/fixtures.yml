@@ -1,9 +1,9 @@
 usps: 
   login: '606BUSTO5766'
 ups:
-  key: "3C359BDEC043F324"
-  login: "jimmyebaker"
-  password: "J27374eb"
+  key: "3C3B57D8D17923B8"
+  login: "mandarinsoda"
+  password: "carlyq8"
 fedex:
   login: '510087666'
   password: '1250153'

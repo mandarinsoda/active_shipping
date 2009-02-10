@@ -165,14 +165,19 @@ module ActiveMerchant
       def find_tracking_info(tracking_number, options={})
         options = @options.update(options)
         tracking_request = build_tracking_request(tracking_number, options)
-        response = commit(:track, tracking_request, (options[:test] || false))
-        parse_tracking_response(response, options)
+
+        parse_tracking_response commit(:track, tracking_request, (options[:test] || false)), options
       end
       
       def valid_credentials?
         # Cannot test with find_rates because USPS doesn't allow that in test mode
-        # test_mode? ? canned_address_verification_works? : super
-        verify()
+        test_mode? ? canned_address_verification_works? : super
+       
+      end
+      
+      def verify_address(location, options={})
+        verify_request = build_verify_request(location)
+        parse_address_verification_response commit(:verify, verify_request, (options[:test] || false)), options
       end
       
       protected
@@ -189,24 +194,20 @@ module ActiveMerchant
         parse_response origin, destination, packages, commit(:world_rates,request,false), options
       end
       
-      def verify()
-        request = build_verify_request()
-        commit(:verify, request, true)
-      end
-      
-      def build_verify_request()
+      def build_verify_request(location)
          request = XmlNode.new('AddressValidateRequest', :USERID => @options[:login]) do |verify_request|
            verify_request << XmlNode.new('Address', :ID => 0) do |address|
-             address << XmlNode.new('Address1')
-             address << XmlNode.new('Address2', '6406 Ivy Lane')
-             address << XmlNode.new('City', 'Greenbelt')
-             address << XmlNode.new('State', 'MD')
-             address << XmlNode.new('Zip5')
+             address << XmlNode.new('Address1', location.address2)
+             address << XmlNode.new('Address2', location.address1)
+             address << XmlNode.new('City', location.city)
+             address << XmlNode.new('State', location.state)
+             address << XmlNode.new('Zip5', location.zip)
              address << XmlNode.new('Zip4')
            end
          end
          URI.encode(save_request(request.to_s))
       end
+      
       # Once the address verification API is implemented, remove this and have valid_credentials? build the request using that instead.
       def canned_address_verification_works?
         request = "%3CCarrierPickupAvailabilityRequest%20USERID=%22#{@options[:login]}%22%3E%20%0A%3CFirmName%3EABC%20Corp.%3C/FirmName%3E%20%0A%3CSuiteOrApt%3ESuite%20777%3C/SuiteOrApt%3E%20%0A%3CAddress2%3E1390%20Market%20Street%3C/Address2%3E%20%0A%3CUrbanization%3E%3C/Urbanization%3E%20%0A%3CCity%3EHouston%3C/City%3E%20%0A%3CState%3ETX%3C/State%3E%20%0A%3CZIP5%3E77058%3C/ZIP5%3E%20%0A%3CZIP4%3E1234%3C/ZIP4%3E%20%0A%3C/CarrierPickupAvailabilityRequest%3E%0A"
@@ -403,7 +404,7 @@ module ActiveMerchant
       def parse_tracking_response(response, options={})
          success = true
          message = ''
-         rate_hash = {}
+        
          response_hash = Hash.from_xml(response)
          root_node_name = response_hash.keys.first
          root_node = response_hash[root_node_name]
@@ -414,24 +415,52 @@ module ActiveMerchant
          else
            tracking_number, origin, destination = nil
         
-           info_node = root_node['track_info']
+           info_node = root_node['TrackInfo']
            
-           message = info_node['track_summary']
+           message = info_node['TrackSummary']
            tracking_number = info_node['ID']
            
            shipment_events = []
-           
-           info_node['track_detail'].each do |detail|
+
+           info_node['TrackDetail'].reverse_each do |detail|
              shipment_events <<  ShipmentEvent.new(detail, nil, nil)
            end
-           TrackingResponse.new(success, message, response_hash,
-             :xml => response,
-             :request => last_request,
-             :shipment_events => shipment_events,
-             :origin => origin,
-             :destination => destination,
-             :tracking_number => tracking_number)
-          end
+         end
+         
+         TrackingResponse.new(success, message, response_hash,
+               :xml => response,
+               :request => last_request,
+               :shipment_events => shipment_events,
+               :origin => origin,
+               :destination => destination,
+               :tracking_number => tracking_number)
+      end
+      
+      def parse_address_verification_response(response, options={})
+         success = true
+         message = ''
+        
+         response_hash = Hash.from_xml(response)
+         root_node_name = response_hash.keys.first
+         root_node = response_hash[root_node_name]
+         
+         if root_node_name == 'Error'
+           success = false
+           message = root_node['Description']
+         else
+           locations = []
+           address_node = root_node['Address']
+           locations << Location.new( :country => 'US',
+                                    :city => address_node['City'],
+                                    :state => address_node['State'],
+                                    :address1 => address_node['Address2'],
+                                    :address2 => address_node['Address1'],
+                                    :zip => address_node['Zip5'])
+         end
+         
+         AddressVerificationResponse.new(success, message, response_hash,
+               :xml => response,
+               :locations => locations)
       end
       
       def package_valid_for_service(package,service_hash)

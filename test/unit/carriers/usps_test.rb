@@ -10,7 +10,7 @@ class USPSTest < Test::Unit::TestCase
     @international_rate_responses = {
       :vanilla => xml_fixture('usps/beverly_hills_to_ottawa_book_rate_response')
     }
-
+    @tracking_response = xml_fixture('usps/wilmington_tracking_response')
   end
   
   # TODO: test_parse_domestic_rate_response
@@ -131,6 +131,26 @@ class USPSTest < Test::Unit::TestCase
     assert Package.new(70 * 16, [5,5,5], :units => :imperial).mass == @carrier.maximum_weight
     assert Package.new((70 * 16) + 0.01, [5,5,5], :units => :imperial).mass > @carrier.maximum_weight
     assert Package.new((70 * 16) - 0.01, [5,5,5], :units => :imperial).mass < @carrier.maximum_weight
+  end
+  
+  def test_find_tracking_info_should_return_a_tracking_response
+    USPS.any_instance.expects(:commit).returns(@tracking_response)
+    assert_equal 'ActiveMerchant::Shipping::TrackingResponse', @carrier.find_tracking_info('EJ958083578US').class.name
+  end
+  
+  def test_find_tracking_info_should_parse_response_into_correct_number_of_shipment_events
+    USPS.any_instance.expects(:commit).returns(@tracking_response)
+    response = @carrier.find_tracking_info('EJ958083578US')
+    assert_equal 3, response.shipment_events.size
+  end
+  
+  def test_find_tracking_info_should_return_shipment_events_in_ascending_chronological_order
+    USPS.any_instance.expects(:commit).returns(@tracking_response)
+    response = @carrier.find_tracking_info('EJ958083578US')
+    assert_equal 'May 30 11:07 amNOTICE LEFT WILMINGTONDE 19801.', response.latest_event.name
+  end
+  
+  def test_address_verification_response
   end
   
   private

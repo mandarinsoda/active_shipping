@@ -155,4 +155,7 @@ class UPSTest < Test::Unit::TestCase
     assert_not_equal prices_of.call(:fake_google_as_commercial), prices_of.call(:fake_google_as_residential)
     assert prices_of.call(:fake_home_as_residential).first > prices_of.call(:fake_home_as_commercial).first
   end
+  
+  def test_address_verification
+  end
 end
